@@ -1,0 +1,63 @@
+# Hyper-parameters, which is not directly used by our framework
+hparams:
+  verbose: --print-args=false --verbose=-4
+  exp_name: trans20L-lstm2L
+
+checkpoint_dir: exp/${hparams.exp_name}_${loss.name}
+
+data:
+  # data_dir relative to the current work dir
+  data_dir: data/chn_3K_200319
+  dataset:
+    data_rspecs:
+      feat:
+        - template: ark:copy-feats ${hparams.verbose} scp:SPLIT_PYRE/feats.scp ark:- |
+            apply-cmvn --norm-means=true --norm-vars=false --utt2spk=ark:SPLIT_PYRE/utt2spk scp:SPLIT_PYRE/cmvn.scp ark:- ark:- |
+          time_mask:
+            T: 70
+            p: 0.2
+            num_mask: 2
+          freq_mask:
+            F: 15
+            num_mask: 2
+      ali:
+        - template: ark:copy-int-vector ark:SPLIT_PYRE/ali.char_6979.ark ark:- |
+  collector:
+    frame_limit: 10000
+    max_length: 2000
+    minibatch_size: 100
+  no_split: True
+  inplace_split: True
+
+optim:
+  optimizer: adam
+  lr: 5e-5
+
+dist:
+  global_optimizer: sync
+  merge_size: 3
+
+model:
+  name: Transformer_MWER
+  ninp: 40
+  nproj: 512
+  nhid: 2048
+  nctc: 2966
+  natt: 6983
+  nlayer: 20
+  ndecode: 2
+  nhid_dec: 1024
+  activation: relu6
+  max_norm: 1000
+  dec: lstm
+  dropout: 0
+  pos_emb: False
+
+loss:
+  name: MWERLoss
+  alpha: 0.01
+  nvocab: 6983
+
+scheduler:
+  warmup_round: 0
+  warmup_batches_per_round: 100

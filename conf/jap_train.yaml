@@ -1,0 +1,73 @@
+# Hyper-parameters, which is not directly used by our framework
+hparams:
+  verbose: --print-args=false --verbose=-4
+  exp_name: trans20L-lstm2L_jp_test
+
+checkpoint_dir: exp/${hparams.exp_name}_${loss.name}
+
+#resume: True
+#init: exp/trans20L-lstm2L_jp_16gpu_LSCTC/checkpoint
+#init: /mnt/lustre02/jiangsu/aispeech/home/hs418/LM-Adaptation/transform_e2e/exp/trans20L-lstm2L_LSCTC/checkpoint    
+data:
+  # data_dir relative to the current work dir
+  data_dir: data/Japan/data_4k/
+           #data/chn_3K_200319
+  dataset:
+    data_rspecs:
+      feat:
+        - template: ark:copy-feats ${hparams.verbose} scp:SPLIT_PYRE/feats.scp ark:- |
+            apply-cmvn --norm-means=true --norm-vars=false --utt2spk=ark:SPLIT_PYRE/utt2spk scp:SPLIT_PYRE/cmvn.scp ark:- ark:- |
+          time_mask:
+            T: 70
+            p: 0.2
+            num_mask: 2
+          freq_mask:
+            F: 15
+            num_mask: 2
+      ali:
+        - template: ark:copy-int-vector ark:SPLIT_PYRE/ali_4303.e2e.ark ark:- |
+        - template: ark:copy-int-vector scp:SPLIT_PYRE/ali_4303.e2e_ctc.scp ark:- |
+       # - template: ark:copy-int-vector ark:SPLIT_PYRE/ali.char_6979.ark ark:- |
+       # - template: ark:copy-int-vector scp:SPLIT_PYRE/ali.char_2966.scp ark:- |
+    #ali1: ali.char_6979.ark: 0 lab lab 0  #e2e ali_4303.e2e_ctc.txt
+    #ali2: ali.char_2966.scp:  lab lab  #ctc
+  collector:
+    frame_limit: 10000
+    max_length: 2000
+    minibatch_size: 100
+  no_split: False  # True
+  inplace_split: False  #True
+
+optim:
+  optimizer: adam
+  lr: 3e-4
+  weight_decay: 0
+dist:
+  global_optimizer: sync
+  merge_size: 1
+
+model:
+  name: Transformer
+  ninp: 80 #40
+  nproj: 512
+  nhid: 2048
+  nctc: 4303   #2966
+  natt: 4303   #6979
+  nlayer: 20
+  ndecode: 2
+  nhid_dec: 1024
+  activation: relu6
+  max_norm: 1000
+  dec: lstm
+  dropout: 0
+  pos_emb: False
+  mode: mt
+
+loss:
+  name: LSCTC
+  alpha: 0.1
+  nvocab: 4303  #6979
+
+scheduler:
+  warmup_round: 100
+  warmup_batches_per_round: 100

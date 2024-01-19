@@ -1,0 +1,67 @@
+# Hyper-parameters, which is not directly used by our framework
+hparams:
+  verbose: --print-args=false --verbose=-4
+  exp_name: trans20L-lstm2L_jp_LSCTC  #trans20L-lstm2L_jp_ctc
+  prior: conf/label-jp.counts
+
+checkpoint_dir: exp/${hparams.exp_name}_${loss.name}
+
+data:
+  # data_dir relative to the current work dir
+  data_dir: exp/${hparams.exp_name}_${loss.name}/data
+  dataset:
+    data_rspecs:
+      feat:
+        - template: ark:copy-feats ${hparams.verbose} scp:SPLIT_PYRE/feats.scp ark:- |
+            apply-cmvn --norm-means=true --norm-vars=false --utt2spk=ark:SPLIT_PYRE/utt2spk scp:SPLIT_PYRE/cmvn.scp ark:- ark:- |
+      ali:
+        - template: ark:copy-int-vector scp:SPLIT_PYRE/ali_4303.e2e_ctc.scp ark:- |
+      lat:
+        - template: scp:SPLIT_PYRE/lat.scp
+  collector:
+    frame_limit: 10000
+    max_length: 2000
+    minibatch_size: 100
+  no_split: false #True
+  inplace_split: True
+
+optim:
+  optimizer: adam
+  lr: 1e-5
+  momentum: 0
+  weight_decay: 0
+
+dist:
+  global_optimizer: sync
+  merge_size: 1
+
+trainer:
+  stage:
+    - tr
+  max_epoch: 1
+
+model:
+  name: Transformer
+  ninp: 40
+  nproj: 512
+  nhid: 2048
+  nctc: 4303
+  natt: 4303
+  nlayer: 20
+  ndecode: 2
+  nhid_dec: 1024
+  activation: relu6
+  max_norm: 100
+  dec: lstm
+  dropout: 0
+  pos_emb: False
+  mode: mmi
+
+loss:
+  name: mmi
+  am_scale: 1.0
+  prior: ${hparams.prior}
+
+scheduler:
+  warmup_round: 0
+  warmup_batches_per_round: 100
